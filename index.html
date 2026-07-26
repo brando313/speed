@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Hockey Speed Session</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1015; --panel:#141C25; --stage:#1A242F;
+  --ink:#EEF4FA; --dim:#93A5B6; --faint:#4A5B6B;
+  --blue:#4D9BFF; --red:#FF3B4E; --green:#31D07A;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;touch-action:manipulation;
+  user-select:none;-webkit-user-select:none;
+}
+.disp{font-family:"Archivo",system-ui,sans-serif;letter-spacing:-.02em}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+
+#app{display:flex;flex-direction:column;height:100%}
+
+/* ---------- top bar ---------- */
+#top{
+  display:flex;align-items:center;gap:12px;padding:14px 20px 10px;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));flex:0 0 auto;
+}
+#block{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--red);font-weight:600;
+}
+#count{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim)}
+#done-badge{
+  display:none;align-items:center;gap:5px;color:var(--green);
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;font-weight:600;
+}
+#done-badge.on{display:flex}
+
+/* ---------- main ---------- */
+#main{flex:1 1 auto;min-height:0;display:grid;gap:16px;padding:0 20px 8px;
+  grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+@media (max-aspect-ratio:1/1){
+  #main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,46%) minmax(0,1fr)}
+}
+#stage{
+  background:var(--stage);border-radius:14px;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;min-height:0;
+}
+#stage svg{width:100%;height:100%;display:block}
+#replay{
+  position:absolute;right:10px;bottom:10px;background:rgba(11,16,21,.72);color:var(--dim);
+  border:1px solid var(--faint);border-radius:9px;padding:8px 12px;font-size:11px;
+  font-family:"IBM Plex Mono",monospace;letter-spacing:.08em;
+}
+#info{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px}
+#info::-webkit-scrollbar{width:0}
+
+h1{font-family:"Archivo";font-weight:900;font-size:clamp(24px,3.4vw,36px);
+   line-height:1;text-transform:uppercase;margin:0 0 8px}
+#plain{color:var(--dim);font-size:15px;line-height:1.45;margin:0 0 16px}
+
+.sec{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.16em;
+     text-transform:uppercase;color:var(--faint);font-weight:600;margin:16px 0 7px}
+ol.steps{margin:0;padding:0;list-style:none;counter-reset:s}
+ol.steps li{counter-increment:s;display:flex;gap:11px;margin:0 0 9px;font-size:15px;line-height:1.4}
+ol.steps li:before{
+  content:counter(s);flex:0 0 auto;width:21px;height:21px;border-radius:50%;
+  background:var(--red);color:#fff;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:1px;
+}
+ul.checks{margin:0;padding:0;list-style:none}
+ul.checks li{display:flex;gap:10px;font-size:14.5px;line-height:1.4;margin:0 0 7px;color:var(--ink)}
+ul.checks li:before{content:"";flex:0 0 auto;width:8px;height:8px;margin-top:7px;
+  border-radius:2px;background:var(--green)}
+#fix{border-left:3px solid var(--red);padding:2px 0 2px 12px;margin:14px 0 4px;
+  font-size:14.5px;font-style:italic;line-height:1.4;color:var(--dim)}
+
+/* ---------- dose + sets ---------- */
+#dosebar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  background:var(--panel);border-radius:14px;padding:14px 16px;margin:0 0 4px}
+#big{font-family:"Archivo";font-weight:900;font-size:30px;line-height:1;white-space:nowrap}
+#sub{font-size:12.5px;color:var(--dim);line-height:1.3;flex:1 1 120px;min-width:110px}
+#dots{display:flex;gap:9px;margin-left:auto}
+.dot{
+  width:34px;height:34px;border-radius:50%;border:2px solid var(--faint);
+  background:transparent;color:var(--faint);font-family:"IBM Plex Mono",monospace;
+  font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;
+  transition:transform .12s ease,background .12s ease,border-color .12s ease;
+}
+.dot:active{transform:scale(.9)}
+.dot.on{background:var(--green);border-color:var(--green);color:#06210F}
+#restbtn{
+  border:2px solid var(--blue);color:var(--blue);background:transparent;border-radius:10px;
+  padding:9px 14px;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;
+  letter-spacing:.06em;white-space:nowrap;
+}
+#restbtn.run{background:var(--blue);color:#04121F}
+#restbtn.hide{display:none}
+
+/* ---------- bottom ---------- */
+#bot{flex:0 0 auto;display:flex;align-items:center;gap:14px;
+  padding:12px 20px calc(14px + var(--safe-b));border-top:1px solid #1E2833}
+.nav{
+  width:52px;height:52px;flex:0 0 auto;border-radius:13px;border:1px solid #2A3644;
+  background:var(--panel);color:var(--ink);display:flex;align-items:center;justify-content:center;
+}
+.nav:disabled{opacity:.3}
+.nav:active{background:#1C2732}
+.nav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;
+  stroke-linecap:round;stroke-linejoin:round}
+#prog{flex:1 1 auto;min-width:0}
+#segs{display:flex;gap:3px;height:9px}
+.seg{flex:1 1 0;border-radius:2px;background:#242F3B;transition:background .2s ease}
+.seg.done{background:var(--green)}
+.seg.cur{background:var(--red)}
+#progtxt{display:flex;justify-content:space-between;margin-top:7px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--dim);letter-spacing:.06em}
+#nextbtn{
+  height:52px;flex:0 0 auto;padding:0 20px;border-radius:13px;border:0;background:var(--ink);
+  color:#0B1015;font-family:"Archivo";font-weight:800;font-size:15px;letter-spacing:.02em;
+  text-transform:uppercase;display:flex;align-items:center;gap:8px;
+}
+#nextbtn:active{opacity:.8}
+#nextbtn svg{width:16px;height:16px;stroke:currentColor;stroke-width:2.6;fill:none;
+  stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- overlays ---------- */
+.screen{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;
+  flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
+.screen.on{display:flex}
+.screen h2{font-family:"Archivo";font-weight:900;font-size:clamp(34px,7vw,64px);
+  line-height:.94;text-transform:uppercase;margin:0 0 14px}
+.screen p{color:var(--dim);max-width:44ch;font-size:16px;line-height:1.5;margin:0 0 26px}
+.bigbtn{border:0;border-radius:14px;background:var(--red);color:#fff;font-family:"Archivo";
+  font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:.03em;padding:17px 34px}
+.bigbtn.ghost{background:transparent;border:2px solid var(--faint);color:var(--dim);
+  font-size:14px;padding:13px 24px;margin-top:12px}
+
+/* rest overlay */
+#rest{position:fixed;inset:0;background:rgba(11,16,21,.96);z-index:30;display:none;
+  flex-direction:column;align-items:center;justify-content:center}
+#rest.on{display:flex}
+#restnum{font-family:"Archivo";font-weight:900;font-size:clamp(90px,26vw,190px);
+  line-height:1;color:var(--blue);font-variant-numeric:tabular-nums}
+#restlbl{font-family:"IBM Plex Mono",monospace;letter-spacing:.2em;font-size:12px;
+  color:var(--dim);text-transform:uppercase;margin-bottom:8px}
+
+/* figure styling */
+.limb{fill:none;stroke:var(--ink);stroke-width:6.5;stroke-linecap:round;stroke-linejoin:round}
+.limb.far{opacity:.34}
+.torso{fill:var(--ink);fill-opacity:.16;stroke:var(--ink);stroke-width:5;stroke-linejoin:round}
+.jt{fill:var(--ink);opacity:.85}
+.hd{fill:var(--ink)}
+.floor{stroke:var(--blue);stroke-width:4;stroke-linecap:round;opacity:.85}
+.mark{stroke:var(--blue);stroke-width:3;stroke-dasharray:9 8;opacity:.55}
+.prop{fill:#2A3846;stroke:var(--blue);stroke-width:3}
+.ball{fill:var(--red)}
+.rope{fill:none;stroke:var(--red);stroke-width:3.4;stroke-linecap:round;opacity:.9}
+.zone{fill:var(--red);opacity:.13}
+.plbl{font-family:"IBM Plex Mono",monospace;font-size:15px;fill:var(--dim);letter-spacing:.08em}
+</style>
+
+<div id="app">
+  <div id="top">
+    <div id="block">&nbsp;</div>
+    <div id="done-badge">&#10003; DONE</div>
+    <div id="count">&nbsp;</div>
+  </div>
+
+  <div id="main">
+    <div id="stage">
+      <svg id="svg" viewBox="-22 -46 244 272" preserveAspectRatio="xMidYMid meet"></svg>
+      <button id="replay">REPLAY</button>
+    </div>
+
+    <div id="info">
+      <h1 id="name"></h1>
+      <p id="plain"></p>
+      <div id="dosebar">
+        <div>
+          <div id="big" class="disp"></div>
+          <div id="sub"></div>
+        </div>
+        <div id="dots"></div>
+        <button id="restbtn">REST 60s</button>
+      </div>
+      <div class="sec">How to do it</div>
+      <ol class="steps" id="steps"></ol>
+      <div class="sec">You know it is right when</div>
+      <ul class="checks" id="checks"></ul>
+      <div class="sec">Watch out for</div>
+      <div id="fix"></div>
+      <div style="height:20px"></div>
+    </div>
+  </div>
+
+  <div id="bot">
+    <button class="nav" id="prev" aria-label="Previous drill">
+      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div id="prog">
+      <div id="segs"></div>
+      <div id="progtxt"><span id="ptl"></span><span id="ptr"></span></div>
+    </div>
+    <button id="nextbtn">Next <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+</div>
+
+<!-- start screen -->
+<div class="screen on" id="start">
+  <h2>Force into<br>the ground</h2>
+  <p id="introtxt"></p>
+  <button class="bigbtn" id="go">Start with the warm up</button>
+  <button class="bigbtn ghost" id="skipprep">Skip to the drills</button>
+</div>
+
+<!-- finish screen -->
+<div class="screen" id="finish">
+  <h2>Session<br>complete</h2>
+  <p id="fintxt"></p>
+  <button class="bigbtn" id="again">Start over</button>
+</div>
+
+<!-- rest overlay -->
+<div id="rest">
+  <div id="restlbl">Rest</div>
+  <div id="restnum" class="disp">60</div>
+  <button class="bigbtn ghost" id="restskip">Skip rest</button>
+</div>
+
+<script>
+const POSES = {"f_tall":[[100.0,26.9],[100,42.9],[85,50.9],[77.0,78.7],[86.1,101.0],[115,50.9],[123.0,78.7],[113.9,101.0],[91.0,104.5],[89.0,152.5],[89.0,192.5],[78.4,200.0],[109.0,104.5],[111.0,152.5],[111.0,192.5],[121.6,200.0]],"f_ball":[[100.0,21.9],[100,37.9],[85,45.9],[77.0,73.8],[86.1,96.0],[115,45.9],[123.0,73.8],[113.9,96.0],[91.0,99.6],[89.0,147.5],[89.0,187.5],[85.4,200.0],[109.0,99.6],[111.0,147.5],[111.0,187.5],[114.6,200.0]],"f_ext":[[100.0,21.4],[100,37.4],[85,45.4],[77.0,73.3],[86.1,95.5],[115,45.4],[123.0,73.3],[113.9,95.5],[91.0,99.1],[89.0,147.0],[89.0,187.0],[88.2,200.0],[109.0,99.1],[111.0,147.0],[111.0,187.0],[111.8,200.0]],"f_air":[[100.0,-18.0],[100,-2],[85,6],[77.0,33.9],[86.1,56.1],[115,6],[123.0,33.9],[113.9,56.1],[91.0,59.7],[89.0,107.6],[89.0,147.6],[88.1,160.6],[109.0,59.7],[111.0,107.6],[111.0,147.6],[111.9,160.6]],"f_athletic":[[100.0,36.1],[100,52.1],[83,60.1],[70.0,86.1],[80.7,107.5],[117,60.1],[130.0,86.1],[119.3,107.5],[89.0,113.8],[78.4,160.6],[74.4,200.4],[61.4,200.0],[111.0,113.8],[121.6,160.6],[125.6,200.4],[138.6,200.0]],"f_sl_stand":[[100.0,26.9],[100,42.9],[85,50.9],[72.8,77.2],[83.0,99.0],[115,50.9],[127.2,77.2],[117.0,99.0],[91.0,104.5],[89.0,152.5],[89.0,192.5],[78.4,200.0],[109.0,104.5],[123.7,150.2],[132.9,189.2],[141.3,179.3]],"f_sl_load":[[104.0,45.2],[103,61.2],[89,69.2],[69.1,90.2],[57.0,111.0],[119,69.2],[101.3,92.1],[88.5,112.4],[95.7,122.7],[82.9,169.0],[91.9,208.0],[81.6,200.0],[114.2,123.0],[139.8,163.5],[147.2,202.9],[149.8,190.1]],"f_bound_air":[[100.0,10.0],[100,26],[84,34],[55.9,27.0],[41.0,45.8],[116,34],[144.9,31.6],[159.5,50.6],[90.9,87.6],[63.2,126.7],[48.5,163.9],[38.7,155.4],[109.1,87.6],[139.5,124.7],[161.2,158.2],[163.5,145.5]],"f_sl_stick":[[96.0,43.9],[96,59.9],[81,67.9],[55.3,81.3],[36.5,96.3],[111,67.9],[135.1,84.0],[152.9,100.2],[87.2,121.6],[57.1,159.0],[42.4,196.2],[42.1,183.2],[104.8,121.6],[110.9,169.2],[112.7,209.1],[121.9,200.0]],"f_brace":[[100.0,47.3],[100,63.3],[82,71.3],[61.5,91.8],[57.3,115.4],[118,71.3],[138.5,91.8],[142.7,115.4],[88.2,124.9],[65.7,167.3],[55.1,205.9],[43.5,200.0],[111.8,124.9],[134.3,167.3],[144.9,205.9],[156.5,200.0]],"f_dip":[[100.0,47.5],[100,63.5],[84,71.5],[65.9,94.1],[55.0,115.5],[116,71.5],[134.1,94.1],[145.0,115.5],[90.4,125.1],[78.3,171.5],[95.7,207.6],[85.1,200.0],[109.6,125.1],[121.7,171.5],[104.3,207.6],[114.9,200.0]],"f_extend":[[100.0,6.0],[100,22],[85,30],[79.5,1.5],[75.3,-22.1],[115,30],[120.5,1.5],[124.7,-22.1],[91.0,83.7],[90.0,131.7],[90.0,171.7],[88.4,184.6],[109.0,83.7],[110.0,131.7],[110.0,171.7],[111.6,184.6]],"f_land":[[100.0,45.3],[100,61.3],[84,69.3],[65.9,92.0],[61.2,115.5],[116,69.3],[134.1,92.0],[138.8,115.5],[90.2,123.0],[76.5,169.0],[89.2,206.9],[78.2,200.0],[109.8,123.0],[123.5,169.0],[110.8,206.9],[121.8,200.0]],"f_calf_down":[[100.0,26.9],[100,42.9],[85,50.9],[78.9,79.2],[87.3,101.7],[115,50.9],[121.1,79.2],[112.7,101.7],[91.0,104.5],[90.0,152.5],[90.0,192.5],[79.4,200.0],[109.0,104.5],[110.0,152.5],[110.0,192.5],[120.6,200.0]],"f_calf_up":[[100.0,21.7],[100,37.7],[85,45.7],[78.9,74.1],[87.3,96.6],[115,45.7],[121.1,74.1],[112.7,96.6],[91.0,99.4],[90.0,147.4],[90.0,187.4],[86.9,200.0],[109.0,99.4],[110.0,147.4],[110.0,187.4],[113.1,200.0]],"f_cross_push":[[94.0,38.8],[94,54.8],[78,62.8],[64.3,88.4],[74.6,110.0],[110,60.8],[123.7,86.4],[113.4,108.0],[84.0,116.5],[73.0,163.2],[69.2,203.0],[56.6,200.0],[106.0,114.7],[119.1,160.8],[129.8,199.4],[142.8,198.7]],"f_cross_over":[[86.0,34.0],[86,50],[70,58],[56.3,83.5],[66.6,105.2],[102,56],[115.7,81.5],[105.4,103.2],[76.0,111.7],[45.0,148.3],[25.1,183.0],[24.0,170.1],[98.0,109.9],[109.1,156.6],[118.8,195.3],[131.5,198.4]],"s_tall":[[104.0,28.6],[102,44.5],[100,52.5],[97.9,81.4],[102.5,104.9],[94,54.5],[91.8,83.4],[97.0,106.8],[98.0,106.4],[100.0,154.4],[99.0,194.4],[110.9,199.5],[94.0,108.5],[96.1,156.4],[94.9,196.4],[107.4,200.0]],"s_athletic":[[107.9,41.8],[105,57.5],[100,65.5],[106.1,93.9],[117.8,114.8],[94,67.5],[84.8,95.0],[77.2,117.8],[92.1,118.9],[114.1,161.6],[99.9,199.0],[112.9,199.4],[88.0,121.2],[108.4,164.7],[92.6,201.4],[105.5,200.0]],"s_drive":[[122.4,39.4],[118,54.8],[112,68.8],[125.9,94.2],[141.9,76.4],[106,70.8],[88.2,93.7],[81.4,70.7],[95.5,120.2],[140.0,138.4],[125.6,175.7],[138.3,178.6],[89.5,122.2],[58.5,158.9],[39.2,193.9],[27.7,200.0]],"s_run":[[124.4,28.6],[120,44.0],[114,58.0],[127.9,83.5],[143.9,65.6],[108,60.0],[90.2,82.9],[83.4,59.9],[97.5,109.4],[142.3,126.9],[127.9,164.2],[140.4,167.8],[91.5,111.4],[94.1,159.4],[96.1,199.3],[109.0,200.0]],"s_brace":[[95.7,51.5],[98,67.3],[100,75.3],[116.6,99.1],[124.2,121.9],[92,77.3],[74.2,100.2],[63.9,121.9],[97.9,129.3],[126.8,167.6],[139.4,205.6],[151.1,199.8],[92.0,131.3],[65.4,171.3],[53.7,209.5],[44.8,200.0]],"s_plank_top":[[165.2,100.9],[150,105.9],[142,107.9],[145.2,136.8],[147.7,160.6],[140,115.9],[143.4,144.7],[146.2,168.6],[89.6,121.0],[49.9,148.1],[23.0,177.6],[21.0,190.5],[87.7,129.5],[48.5,157.2],[21.9,187.0],[22.4,200.0]],"s_plank_bottom":[[167.8,160.2],[152,162.5],[144,162.5],[123.5,183.0],[147.0,187.8],[142,170.5],[120.4,189.9],[144.3,192.1],[90.0,160.5],[45.1,177.3],[10.0,196.6],[21.9,191.4],[88.0,168.5],[43.5,186.3],[5.9,200.0],[17.9,195.0]],"s_plank_push":[[158.3,90.6],[144,97.8],[136,99.8],[141.3,128.3],[147.0,151.6],[134,107.8],[139.7,136.2],[145.8,159.4],[86.3,120.8],[50.1,152.4],[42.8,191.7],[40.0,179.0],[84.6,129.5],[47.5,160.1],[50.0,200.0],[44.9,188.0]],"s_feet_under":[[152.5,79.8],[140,89.8],[132,93.8],[143.4,120.5],[149.0,143.8],[126,97.8],[113.0,123.8],[100.1,144.0],[91.8,129.8],[115.5,171.5],[91.2,203.3],[103.8,200.0],[85.8,133.8],[57.8,172.9],[51.3,212.3],[48.1,199.8]],"s_split":[[100.0,36.2],[100,52.2],[94,60.2],[89.9,88.9],[99.2,111.0],[88,62.2],[83.9,90.9],[93.2,113.0],[94.0,114.2],[124.0,151.7],[136.0,189.8],[145.7,198.5],[88.0,116.2],[70.2,160.8],[66.5,200.6],[53.5,200.0]],"s_split_dip":[[100.0,49.7],[100,65.7],[94,73.7],[87.9,102.0],[97.0,124.2],[88,75.7],[81.9,104.0],[91.0,126.2],[94.0,127.7],[132.6,156.1],[140.3,195.4],[151.5,188.8],[88.0,129.7],[63.7,171.0],[77.0,208.8],[67.4,200.0]],"s_split_air":[[100.0,10.0],[100,26],[94,34],[75.9,56.6],[66.3,34.6],[88,36],[107.4,57.6],[120.4,37.4],[94.0,88.0],[60.1,121.9],[46.3,159.5],[39.8,148.3],[88.0,90.0],[125.1,120.5],[147.9,153.3],[155.8,143.0]],"s_split_land":[[100.0,50.8],[100,66.8],[94,74.8],[89.9,103.5],[99.2,125.6],[88,76.8],[83.9,105.5],[93.2,127.6],[94.0,128.8],[63.1,165.5],[50.4,203.5],[39.9,195.8],[88.0,130.8],[121.0,165.6],[144.1,198.3],[157.0,200.0]],"s_kneel":[[100.0,56.4],[100,72.4],[96,80.4],[100.1,109.1],[114.4,128.4],[90,82.4],[83.9,110.8],[98.2,130.1],[97.9,134.4],[102.0,182.2],[140.1,194.4],[152.6,198.0],[91.9,136.4],[96.0,184.2],[134.1,196.4],[146.6,200.0]],"s_kneel_catch":[[53.7,130.6],[68,137.7],[76,137.7],[63.0,163.7],[52.3,185.1],[74,147.7],[60.3,173.3],[48.9,194.4],[125.5,159.3],[164.2,187.6],[204.2,187.9],[192.5,193.4],[123.2,170.1],[163.3,196.4],[203.3,194.6],[191.4,200.0]],"s_mb_load":[[104.0,33.5],[102,49.4],[96,57.4],[86.8,84.9],[77.5,107.0],[90,59.4],[97.5,87.4],[88.9,109.8],[96.0,111.4],[85.4,158.2],[79.3,197.7],[66.5,200.0],[90.0,113.4],[117.5,152.7],[125.7,191.9],[136.8,198.6]],"s_mb_turn":[[106.0,29.3],[104,45.1],[98,53.1],[92.3,81.6],[99.8,104.4],[92,55.1],[103.4,81.8],[110.5,104.7],[98.0,107.1],[89.4,154.4],[83.9,194.0],[72.4,200.0],[92.0,109.1],[122.0,146.6],[130.8,185.6],[140.6,194.2]],"s_mb_release":[[110.0,27.7],[108,43.6],[102,51.6],[122.5,31.1],[142.6,17.9],[96,53.6],[117.7,34.3],[137.7,21.1],[100.1,105.5],[93.8,153.1],[88.1,192.7],[77.4,200.0],[94.1,107.5],[125.1,144.1],[136.0,182.6],[144.9,192.1]],"s_cop_down":[[32.6,152.4],[48,156.8],[56,154.8],[47.5,182.5],[68.9,193.3],[54,164.8],[44.8,192.3],[67.6,200.0],[109.8,159.9],[157.4,165.5],[197.1,170.5],[189.8,159.7],[107.8,169.9],[152.5,187.3],[190.6,199.5],[181.5,190.2]],"s_cop_up":[[31.3,117.3],[46,123.6],[54,121.6],[47.0,149.7],[54.1,172.6],[52,131.6],[44.5,159.6],[52.9,182.1],[107.2,131.0],[154.4,139.7],[194.1,144.6],[206.7,141.4],[105.2,141.0],[144.8,168.1],[172.9,196.5],[185.4,200.0]],"f_sl_stick_m":[[104.0,43.9],[104,59.9],[89,67.9],[64.9,84.0],[47.1,100.2],[119,67.9],[144.7,81.3],[163.5,96.3],[95.2,121.6],[89.1,169.2],[87.3,209.1],[78.1,200.0],[112.8,121.6],[142.9,159.0],[157.6,196.2],[157.9,183.2]],"f_sl_load_m":[[96.0,45.2],[97,61.2],[81,69.2],[98.7,92.1],[111.5,112.4],[111,69.2],[130.9,90.2],[143.0,111.0],[85.8,123.0],[60.2,163.5],[52.8,202.9],[50.2,190.1],[104.3,122.7],[117.1,169.0],[108.1,208.0],[118.4,200.0]],"f_sl_stand_m":[[100.0,26.9],[100,42.9],[85,50.9],[72.8,77.2],[83.0,99.0],[115,50.9],[127.2,77.2],[117.0,99.0],[91.0,104.5],[76.3,150.2],[67.1,189.2],[58.7,179.3],[109.0,104.5],[111.0,152.5],[111.0,192.5],[121.6,200.0]],"f_bound_air_m":[[100.0,10.0],[100,26],[84,34],[55.1,31.6],[40.5,50.6],[116,34],[144.1,27.0],[159.0,45.8],[90.9,87.6],[60.5,124.7],[38.8,158.2],[36.5,145.5],[109.1,87.6],[136.8,126.7],[151.5,163.9],[161.3,155.4]],"s_split_m":[[100.0,50.8],[100,66.8],[112,76.8],[116.1,105.5],[106.8,127.6],[106,74.8],[110.1,103.5],[100.8,125.6],[112.0,130.8],[79.0,165.6],[55.9,198.3],[43.0,200.0],[106.0,128.8],[136.9,165.5],[149.6,203.5],[160.1,195.8]],"f_rope_down":[[100.0,25.6],[100,41.6],[85,49.6],[78.0,77.8],[63.5,96.9],[115,49.6],[122.0,77.8],[136.5,96.9],[91.0,103.3],[89.0,151.3],[89.0,191.3],[79.4,200.0],[109.0,103.3],[111.0,151.3],[111.0,191.3],[120.6,200.0]],"f_rope_up":[[100.0,10.0],[100,26],[85,34],[78.0,62.1],[63.5,81.3],[115,34],[122.0,62.1],[136.5,81.3],[91.0,87.7],[89.0,135.6],[89.0,175.6],[87.8,188.6],[109.0,87.7],[111.0,135.6],[111.0,175.6],[112.2,188.6]],"s_ankle_back":[[100.0,65.1],[98,81.0],[96,95.0],[104.5,122.7],[118.4,142.3],[90,97.0],[83.5,125.3],[98.4,144.0],[98.1,149.0],[145.1,158.6],[148.1,198.5],[161.0,200.0],[90.0,151.0],[87.9,199.0],[48.1,194.8],[35.7,198.7]],"s_ankle_fwd":[[114.0,69.1],[112,85.0],[110,99.0],[118.5,126.7],[132.4,146.4],[104,101.0],[97.5,129.3],[112.4,148.1],[116.2,152.7],[163.0,163.2],[146.8,199.8],[159.8,200.0],[108.1,154.9],[87.4,198.2],[47.6,194.8],[35.3,198.9]],"f_9090_mid":[[100.0,95.6],[100,111.6],[86,127.6],[68.6,150.8],[59.5,173.0],[114,127.6],[131.4,150.8],[140.5,173.0],[92.2,181.2],[56.2,149.4],[60.8,189.1],[53.7,200.0],[107.8,181.2],[143.8,149.4],[139.2,189.1],[146.3,200.0]],"f_9090_l":[[100.0,80.7],[100,96.7],[86,112.7],[68.6,135.9],[59.5,158.1],[114,112.7],[131.4,135.9],[140.5,158.1],[92.2,166.3],[47.0,182.5],[82.9,200.0],[70.3,197.1],[107.8,166.3],[60.5,174.3],[26.3,195.0],[31.1,182.9]],"s_rock_fwd":[[170.3,115.1],[156,122.3],[148,124.3],[149.8,153.2],[151.2,177.2],[146,132.3],[147.8,161.2],[149.4,185.2],[95.9,138.3],[90.7,186.0],[53.3,200.0],[65.2,194.9],[93.9,146.3],[57.9,178.1],[22.2,196.2],[9.2,196.4]],"s_rock_back":[[158.3,126.3],[144,133.4],[136,135.4],[141.7,163.9],[150.1,186.3],[134,143.4],[140.1,171.8],[150.1,193.6],[82.3,140.6],[76.7,188.3],[38.5,200.0],[50.2,194.4],[80.3,148.6],[41.2,176.6],[5.6,194.7],[-7.2,197.3]],"s_swing_fwd":[[100.0,28.2],[100,44.2],[96,52.2],[116.5,72.7],[138.1,62.2],[90,54.2],[83.9,82.5],[88.4,106.1],[96.0,106.2],[135.6,133.4],[165.3,160.1],[166.5,147.2],[90.0,108.2],[92.0,156.1],[91.0,196.1],[103.4,200.0]],"s_swing_back":[[100.0,28.2],[100,44.2],[96,52.2],[116.5,72.7],[138.1,62.2],[90,54.2],[83.9,82.5],[88.4,106.1],[96.0,106.2],[60.8,138.8],[29.5,163.7],[34.9,151.9],[90.0,108.2],[92.0,156.1],[91.0,196.1],[103.4,200.0]],"f_swing_out":[[100.0,26.9],[100,42.9],[85,50.9],[60.5,66.3],[36.6,64.2],[115,50.9],[139.5,66.3],[163.4,64.2],[91.0,104.5],[51.2,131.4],[17.5,153.0],[5.2,157.1],[109.0,104.5],[111.0,152.5],[111.0,192.5],[121.6,200.0]],"f_swing_in":[[100.0,26.9],[100,42.9],[85,50.9],[60.5,66.3],[36.6,64.2],[115,50.9],[139.5,66.3],[163.4,64.2],[91.0,104.5],[127.3,135.9],[157.8,161.8],[170.6,164.0],[109.0,104.5],[111.0,152.5],[111.0,192.5],[121.6,200.0]],"s_run_b":[[124.4,21.1],[120,36.5],[114,50.5],[97.4,74.3],[86.2,53.0],[108,52.5],[123.6,77.0],[140.5,60.0],[97.5,101.9],[68.7,140.3],[46.1,173.3],[36.4,182.0],[91.5,103.9],[135.2,123.9],[121.6,161.6],[134.1,165.2]],"f_9090_r":[[100.0,80.7],[100,96.7],[86,112.7],[68.6,135.9],[59.5,158.1],[114,112.7],[131.4,135.9],[140.5,158.1],[92.2,166.3],[139.5,174.3],[173.7,195.0],[168.9,182.9],[107.8,166.3],[153.0,182.5],[117.1,200.0],[129.7,197.1]]};
+const DRILLS = [{"block":"Warm up","name":"Jump rope","view":"front","plain":"Three minutes of easy skipping to get your body temperature up. If you would rather ride a bike, ride easy for the same three minutes.","big":"3 min","sub":"easy, nothing hard","dots":1,"rest":0,"props":"rope","seq":[{"p":"f_rope_down","t":190,"arc":1},{"p":"f_rope_up","t":190,"arc":0}],"steps":["Stay on the balls of your feet.","Keep the hops tiny, barely an inch off the floor.","Turn the rope with your wrists, not your whole arms.","Keep it easy. You should be able to hold a conversation the whole time."],"checks":["You are breathing a little harder but could still talk.","The hops stay small and quiet."],"fix":"Do not turn this into a workout. It is here to warm you up and nothing else."},{"block":"Warm up","name":"Ankle rock","view":"side","plain":"From a half kneeling position you drive your front knee forward past your toes. Stiff ankles are one of the most common limits on a skating stride.","big":"6 each","sub":"6 slow rocks per side","dots":2,"rest":0,"seq":[{"p":"s_ankle_back","t":650},{"p":"s_ankle_fwd","t":600,"e":"out"},{"p":"s_ankle_fwd","t":300},{"p":"s_ankle_back","t":600,"e":"in"}],"steps":["Half kneeling, front foot flat on the floor, back knee down.","Keep the front heel glued to the floor.","Drive your front knee forward, out over and past your little toe.","Hold for a beat, come back, repeat. Then switch sides."],"checks":["Your front heel never lifts.","You feel a stretch in the front of the ankle, not a pinch in the joint."],"fix":"If the heel comes up, you went too far. Shorten the range and it will open up faster."},{"block":"Warm up","name":"90-90 hip switch","view":"front","plain":"Sitting on the floor with both knees bent, you rotate both legs from one side to the other. It opens the inside of one hip and the outside of the other at the same time.","big":"6 each","sub":"6 switches per side","dots":1,"rest":0,"seq":[{"p":"f_9090_l","t":620},{"p":"f_9090_mid","t":420},{"p":"f_9090_r","t":620},{"p":"f_9090_mid","t":420}],"steps":["Sit with your hands behind you, knees bent, feet flat on the floor.","Let both knees fall over to one side, keeping them bent at about 90 degrees.","Lift them back through the middle and lower them to the other side.","Go slowly and stay tall through the chest."],"checks":["Your chest stays up rather than collapsing backward.","Both knees move together."],"fix":"If you cannot sit upright, sit on a folded towel or a book. That fixes it immediately."},{"block":"Warm up","name":"Adductor rockback","view":"side","plain":"On your hands and knees with one leg straight out to the side, you rock your hips back toward your heel. This is the groin work that actually carries over to skating.","big":"6 each","sub":"6 rockbacks per side","dots":2,"rest":0,"seq":[{"p":"s_rock_fwd","t":600},{"p":"s_rock_back","t":700,"e":"out"},{"p":"s_rock_back","t":300},{"p":"s_rock_fwd","t":600,"e":"in"}],"steps":["Get on your hands and knees.","Straighten one leg out to the side with the foot flat and the toes pointing forward.","Keep your back flat and rock your hips back toward your heel.","Come forward again. Repeat, then switch sides."],"checks":["Your back stays flat rather than rounding.","You feel it along the inside of the straight leg."],"fix":"Turning the straight foot out takes the stretch off the muscle you are trying to reach. Keep the toes pointing forward."},{"block":"Warm up","name":"Leg swing, front to back","view":"side","plain":"Hand on a wall, you swing one leg forward and back like a pendulum. This is a moving warm up, not a stretch you hold.","big":"10 each","sub":"10 swings per leg","dots":2,"rest":0,"seq":[{"p":"s_swing_back","t":400},{"p":"s_swing_fwd","t":400}],"steps":["Stand tall with one hand on a wall for balance.","Swing one leg forward and back, staying relaxed.","Let the range grow a little with each swing.","Keep your torso still. Only the leg moves."],"checks":["Your upper body stays quiet.","The range is bigger on the tenth swing than the first."],"fix":"Do not force height on the early swings. Start small and let it open up."},{"block":"Warm up","name":"Leg swing, side to side","view":"front","plain":"The same idea, but the leg swings across the front of your body and then back out to the side.","big":"10 each","sub":"10 swings per leg","dots":2,"rest":0,"seq":[{"p":"f_swing_in","t":400},{"p":"f_swing_out","t":400}],"steps":["Face a wall with both hands on it.","Swing one leg across the front of your body, then back out to the side.","Stay tall and keep your hips square to the wall.","Ten swings, then switch legs."],"checks":["Your hips stay facing the wall.","The swing feels loose rather than forced."],"fix":"If you are leaning sideways to get more range, you have gone past what is useful here."},{"block":"Warm up","name":"Ankle pogo","view":"front","plain":"A small, stiff bounce on the balls of your feet with your knees almost straight, like you are a pogo stick.","big":"3 &times; 10","sub":"3 sets of 10 bounces","dots":3,"rest":0,"seq":[{"p":"f_ball","t":90,"e":"out"},{"p":"f_ext","t":80,"e":"out"},{"p":"f_air","t":170,"e":"in"}],"steps":["Stand tall, feet under your hips, arms bent at your sides.","Bounce off the balls of your feet. Your ankles do the work, your knees barely move.","Point your toes down while you are in the air.","Land on the balls of your feet and go straight into the next bounce."],"checks":["You hear a light tap, not a thud.","You are in the air longer than you are on the ground."],"fix":"If your knees are bending, this has become a squat jump. Make the bounces smaller and faster."},{"block":"Warm up","name":"Lateral pogo","view":"front","plain":"The same stiff bounce, but hopping side to side over a line on the floor.","big":"2 &times; 8","sub":"2 sets of 8 each direction","dots":2,"rest":0,"seq":[{"p":"f_ball","t":90,"dx":-34},{"p":"f_ext","t":80,"dx":-34,"e":"out"},{"p":"f_air","t":150,"dx":0,"e":"in"},{"p":"f_ball","t":90,"dx":34},{"p":"f_ext","t":80,"dx":34,"e":"out"},{"p":"f_air","t":150,"dx":0,"e":"in"}],"props":"line","steps":["Put a line on the floor: tape, a stick, a crack in the driveway.","Same tall, stiff bounce as the ankle pogo, feet together.","Hop back and forth across the line, staying on the balls of your feet."],"checks":["You land the same distance out on both sides.","The rhythm stays fast and small."],"fix":"If the hops get bigger and slower as you go, stop the set. Small and fast beats big and heavy here."},{"block":"Warm up","name":"Build-up run","view":"side","plain":"A 20 yard run where you gradually add speed. Three of them, at roughly 60, then 80, then 90 percent. These are the bridge between warming up and sprinting.","big":"3 reps","sub":"20 yards, building each time","dots":3,"rest":0,"seq":[{"p":"s_run","t":155,"dx":-60},{"p":"s_run_b","t":155,"dx":-25},{"p":"s_run","t":155,"dx":10},{"p":"s_run_b","t":155,"dx":45},{"p":"s_run","t":155,"dx":80},{"p":"s_run_b","t":260,"dx":115,"fade":1}],"steps":["Start easy and add speed smoothly across the 20 yards.","First run about 60 percent, second about 80, third about 90.","Walk back between them. There is no rush.","Never hit full speed on these. That is what the drills are for."],"checks":["You finish each run faster than you started it.","You feel relaxed, not straining."],"fix":"Skipping these and going straight into sprints is how people pull hamstrings. They are not optional."},{"block":"Starts","name":"Falling start","view":"side","plain":"You tip forward from the ankles like a falling tree, and when you cannot hold it any longer you sprint out of it.","big":"5 reps","sub":"10 yards &middot; rest 60s between","dots":5,"rest":60,"pivot":[105,197],"seq":[{"p":"s_tall","t":700,"rot":0},{"p":"s_tall","t":650,"rot":20,"e":"in"},{"p":"s_drive","t":240,"e":"out"},{"p":"s_run","t":160,"dx":50},{"p":"s_run_b","t":160,"dx":82},{"p":"s_run","t":260,"dx":114,"fade":1}],"steps":["Stand tall with your feet together and your arms at your sides.","Stay stiff from your ankles to your head, like a board.","Let yourself tip forward from the ankles. Do not bend at the waist.","When you cannot hold the lean any longer, drive a leg through and sprint 10 yards."],"checks":["Your whole body stays in one straight line as you tip.","Your first steps have your shin angled sharply forward, not straight up and down."],"fix":"Breaking at the hips is the usual mistake. If your butt stays back, you will run with your chest up and no push."},{"block":"Starts","name":"Push-up start","view":"side","plain":"You start face down in a push-up, push off the floor, get your feet under you, and sprint without standing up first.","big":"4 reps","sub":"10 yards &middot; rest 60s between","dots":4,"rest":60,"seq":[{"p":"s_plank_top","t":600},{"p":"s_plank_bottom","t":260,"e":"in"},{"p":"s_plank_push","t":200,"e":"out"},{"p":"s_feet_under","t":220},{"p":"s_run","t":160,"dx":55},{"p":"s_run_b","t":160,"dx":88},{"p":"s_run","t":260,"dx":120,"fade":1}],"steps":["Get into the top of a push-up, hands under your shoulders, facing the way you will run.","Lower your chest to the floor.","Push up hard and pull your feet underneath you.","Sprint 10 yards straight out of that low position."],"checks":["You never come to a full standing position before the first stride.","Your body stays angled forward through the first few steps."],"fix":"Popping upright before the first stride throws away the low angle, which was the whole reason for starting on the floor."},{"block":"Starts","name":"Reactive start","view":"side","plain":"A partner drops a ball without warning and you sprint to catch it before it bounces twice.","big":"4 reps","sub":"10 yards &middot; rest 60s between","dots":4,"rest":60,"seq":[{"p":"s_athletic","t":1100},{"p":"s_drive","t":220,"e":"out"},{"p":"s_run","t":160,"dx":55},{"p":"s_run_b","t":160,"dx":88},{"p":"s_run","t":260,"dx":120,"fade":1}],"props":"partner","ball":{"track":[[176,58,1100],[176,150,220],[178,188,250],[178,192,320]]},"steps":["Stand in an athletic stance: feet just outside your hips, knees soft, hips back, weight on the balls of your feet.","A partner stands 10 yards away holding a tennis ball at shoulder height.","They drop it whenever they feel like it. No countdown.","Go the instant it leaves their hand and try to catch it before the second bounce."],"checks":["You are completely still until the ball moves.","You are reacting to what you see, not to a rhythm in your head."],"fix":"Rocking or bouncing in the stance lets you time your own start, which defeats the drill. Stand still and be surprised."},{"block":"Lateral","name":"Lateral bound and stick","view":"front","plain":"You jump sideways off one leg, land on the other leg only, and freeze completely for two seconds.","big":"3 &times; 4","sub":"3 sets of 4 each side","dots":3,"rest":0,"seq":[{"p":"f_sl_stand","t":650},{"p":"f_sl_load","t":420,"e":"in"},{"p":"f_bound_air","t":230,"dx":42,"e":"out"},{"p":"f_sl_stick","t":250,"dx":80,"e":"in"},{"p":"f_sl_stick","t":1100,"dx":80},{"p":"f_sl_stick","t":260,"dx":80,"fade":1}],"steps":["Stand on your right leg with the knee slightly bent and your hips back.","Sit into that leg and swing your arms back.","Push hard sideways and land on your left leg only.","Freeze for two full seconds. No hop, no touching the other foot down."],"checks":["You can hold the landing completely still for two seconds.","Your landing knee stays pointed over your toes, not caving inward."],"fix":"The landing is the drill, not the distance. If you wobble, you jumped too far. Shorten it until you can stick it cold."},{"block":"Lateral","name":"Continuous skater bound","view":"front","plain":"The same sideways jump, but now you never stop. Land and immediately push back the other way.","big":"3 &times; 6","sub":"3 sets of 6 each side","dots":3,"rest":0,"seq":[{"p":"f_sl_load","t":190,"dx":-34,"e":"in"},{"p":"f_bound_air","t":200,"dx":0,"e":"out"},{"p":"f_sl_stick","t":190,"dx":34,"e":"in"},{"p":"f_sl_load_m","t":190,"dx":34,"e":"in"},{"p":"f_bound_air_m","t":200,"dx":0,"e":"out"},{"p":"f_sl_stick_m","t":190,"dx":-34,"e":"in"}],"steps":["Start with the same push you used in the bound and stick.","The instant you land, push straight back the other way.","Let your arms swing across your body like a skating stride.","Keep going without stopping for the whole set."],"checks":["Your time on the ground is short. You land and leave.","You cover the same distance in both directions."],"fix":"Do not run this drill until you can stick a landing cleanly. Otherwise you are just practicing sloppy landings faster."},{"block":"Lateral","name":"Crossover start","view":"front","plain":"From a standing start, you push off your far leg and let your near leg cross over in front of it to get moving sideways fast.","big":"4 reps","sub":"10 yards &middot; alternate sides &middot; rest 45s","dots":4,"rest":45,"seq":[{"p":"f_athletic","t":800},{"p":"f_cross_push","t":300,"e":"in"},{"p":"f_cross_over","t":280,"dx":-32,"e":"out"},{"p":"f_cross_over","t":340,"dx":-96,"fade":1}],"steps":["Stand in an athletic stance facing straight ahead, with your target 10 yards off to your left.","Push hard off your right foot, the one furthest from the target.","Let your left leg cross over in front of the right one.","Turn your hips toward the target and sprint."],"checks":["The first thing that happens is the far foot pushing the ground away.","You do not step backward before you go."],"fix":"If the first move is reaching with the crossing leg, you gave up the push. The power comes from the far leg."},{"block":"Lateral","name":"Sprint and stop","view":"side","plain":"Sprint flat out for 10 yards, then bring yourself to a complete dead stop within the next 5.","big":"4 reps","sub":"10 yards on, 5 yards to stop","dots":4,"rest":45,"seq":[{"p":"s_run","t":160,"dx":-70},{"p":"s_run_b","t":160,"dx":-40},{"p":"s_run","t":160,"dx":-8},{"p":"s_brace","t":250,"dx":34,"e":"out"},{"p":"s_brace","t":1200,"dx":34},{"p":"s_brace","t":260,"dx":34,"fade":1}],"props":"zone","steps":["Mark 15 yards with a cone at the 10.","Sprint flat out all the way to the cone. Do not coast into it.","Past the cone, widen your feet and drop your hips to brake.","Come to a complete stop by the 15 and hold it for two seconds."],"checks":["You stop inside the 5 yard zone without stumbling forward.","Your chest stays up as you brake."],"fix":"Alternate which foot plants last so one side does not get better than the other."},{"block":"Power","name":"Heavy lift, then jump","view":"front","plain":"Three heavy reps of a squat or deadlift, then exactly 60 seconds rest, then three maximum jumps. The heavy lift briefly turns your nervous system up so you jump higher.","big":"3 rounds","sub":"3 heavy reps &rarr; 60s &rarr; 3 jumps","dots":3,"rest":60,"seq":[{"p":"f_tall","t":700},{"p":"f_dip","t":210,"e":"in"},{"p":"f_extend","t":150,"e":"out"},{"p":"f_air","t":190},{"p":"f_land","t":210,"e":"in"},{"p":"f_tall","t":420,"e":"out"}],"steps":["Do 3 reps of a trap bar deadlift or back squat, at a weight you could lift about 6 times before failing.","No barbell? Push against a wall as hard as you possibly can for 5 seconds instead.","Rest 60 seconds. Not less, not more.","Then 3 maximum jumps: dip fast to a quarter squat, swing your arms, jump as high as you can, land soft.","That is one round. Do three."],"checks":["The jumps feel springier than they normally would.","You land quietly every time."],"fix":"Do not go so heavy that your form breaks down. The lift is here to switch your nervous system on, not to set a record."},{"block":"Power","name":"Split squat jump","view":"side","plain":"From a lunge position, jump straight up, switch your legs in the air, and land in the opposite stance.","big":"3 &times; 4","sub":"3 sets of 4 each side","dots":3,"rest":0,"seq":[{"p":"s_split","t":650},{"p":"s_split_dip","t":210,"e":"in"},{"p":"s_split_air","t":230,"e":"out"},{"p":"s_split_land","t":230,"e":"in"},{"p":"s_split_land","t":650}],"steps":["Set up in a split stance: one foot forward, back knee under your hip, chest tall.","Dip quickly, then jump straight up.","Switch your legs in the air.","Land in the mirror image of where you started. Pause and reset before the next one."],"checks":["You land quietly.","Your chest stays tall the whole time, not tipping forward."],"fix":"Do not run these together like jumping jacks. Reset your posture between every rep so each one is a real effort."},{"block":"Power","name":"Med ball scoop throw","view":"side","plain":"Standing side-on to a wall, you whip a medicine ball up into it using your hips, the same way you load a shot.","big":"3 &times; 4","sub":"3 sets of 4 each side","dots":3,"rest":0,"seq":[{"p":"s_mb_load","t":750},{"p":"s_mb_turn","t":190,"e":"out"},{"p":"s_mb_release","t":170,"e":"out"},{"p":"s_mb_release","t":420,"fade":1}],"props":"wall","ballFollow":"hL","steps":["Stand side-on to a solid wall, about six feet away, feet a little wider than your hips.","Hold a 6 to 10 pound ball low at your back hip. Use one that does not bounce back at your face.","Turn your back foot and drive your hip through.","Throw the ball up into the wall as hard as you can. Let it hit high, not straight across."],"checks":["Your back foot pivots, the way it does when you shoot.","The ball hits the wall well above where you released it."],"fix":"If your arms are doing the work, the ball goes nowhere. The throw starts at the back foot and finishes at the hands."},{"block":"Armor","name":"Copenhagen plank","view":"side","plain":"A side plank where your top foot rests on a bench and you squeeze down into it. It is the best groin injury insurance there is.","big":"3 &times; 25s","sub":"3 holds of 20 to 30 seconds each side","dots":3,"rest":0,"seq":[{"p":"s_cop_down","t":800},{"p":"s_cop_up","t":500,"e":"out"},{"p":"s_cop_up","t":1800}],"props":"bench","steps":["Lie on your side with your top foot resting on a bench, chair, or couch.","Prop yourself on your bottom elbow, directly under your shoulder.","Lift your hips until your body is one straight line, squeezing down into the bench.","Hold, then switch sides."],"checks":["Your body makes one straight line from shoulder to ankle.","You feel it on the inside of the top thigh."],"fix":"Too hard? Put your top knee on the bench instead of your foot. Cut the time before you let the hips sag."},{"block":"Armor","name":"Nordic hamstring curl","view":"side","plain":"Kneeling with your ankles held down, you lower your whole body toward the floor as slowly as you can and catch yourself with your hands.","big":"3 &times; 5","sub":"3 sets of 5 slow lowers","dots":3,"rest":0,"pivot":[100,176],"seq":[{"p":"s_kneel","t":700,"rot":0},{"p":"s_kneel","t":900,"rot":-28,"e":"lin"},{"p":"s_kneel","t":900,"rot":-52,"e":"lin"},{"p":"s_kneel_catch","t":260,"e":"in"},{"p":"s_kneel_catch","t":600,"fade":1}],"props":"hold","steps":["Kneel on something soft. Have a partner press firmly on your ankles, or hook your heels under a couch.","Keep your hips locked straight, in line with your shoulders and knees.","Lower yourself toward the floor as slowly as you can control.","Catch yourself with your hands and push back to the start."],"checks":["Your hips never bend. Shoulders, hips and knees stay in one line.","You control the first half of the way down rather than dropping."],"fix":"Expect to be sore after the first session. Start with 3 reps and a short range, then build."},{"block":"Armor","name":"Slow calf raise","view":"front","plain":"Rise all the way onto your toes with straight knees, then take three full seconds to lower back down.","big":"2 &times; 10","sub":"2 sets of 10, 3 seconds down","dots":2,"rest":0,"seq":[{"p":"f_calf_down","t":450},{"p":"f_calf_up","t":500,"e":"out"},{"p":"f_calf_down","t":1500,"e":"lin"}],"steps":["Stand with your knees straight, fingertips on a wall for balance only.","Rise all the way onto your toes.","Take three full seconds to lower back down. Count it out."],"checks":["Your knees stay straight the whole time.","The lowering is slow and even, not a drop."],"fix":"Bouncing through the reps wastes the set. The slow lowering is where the tissue actually gets tougher."}];
+const NJ = 16;
+const [HEAD,NECK,SL,EL,HL,SR,ER,HR,PL,KL,AL,TL,PR,KR,AR,TR] = [...Array(16).keys()];
+
+/* ---------------- animation engine ---------------- */
+const EASE = {
+  lin: t=>t,
+  in:  t=>t*t,
+  out: t=>1-(1-t)*(1-t),
+  io:  t=>t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2
+};
+const lerp=(a,b,u)=>a+(b-a)*u;
+
+function sample(seq, ms){
+  const total = seq.reduce((a,f)=>a+f.t,0);
+  let u = ((ms % total)+total) % total, i = 0;
+  while(u >= seq[i].t){ u -= seq[i].t; i++; if(i>=seq.length){i=0;break;} }
+  const A = seq[i], B = seq[(i+1)%seq.length];
+  const k = (EASE[A.e] || EASE.io)(A.t ? u/A.t : 0);
+  const pa = POSES[A.p], pb = POSES[B.p];
+  const pts = new Array(NJ);
+  for(let j=0;j<NJ;j++) pts[j] = [lerp(pa[j][0],pb[j][0],k), lerp(pa[j][1],pb[j][1],k)];
+  return {
+    pts,
+    dx:  lerp(A.dx||0, B.dx||0, k),
+    dy:  lerp(A.dy||0, B.dy||0, k),
+    rot: lerp(A.rot||0, B.rot||0, k),
+    arc: lerp(A.arc===undefined?0:A.arc, B.arc===undefined?0:B.arc, k),
+    op:  A.fade ? lerp(1,0,k) : (i===0 && seq[seq.length-1].fade ? lerp(0,1,Math.min(1,k*3)) : 1)
+  };
+}
+
+const NS='http://www.w3.org/2000/svg';
+const mk=(t,a={})=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const path=(pts,idx)=>'M '+idx.map(i=>pts[i][0].toFixed(1)+' '+pts[i][1].toFixed(1)).join(' L ');
+
+let SVG, G, E={}, JTS=[], BALL=null, raf=0, t0=0, cur=null;
+const JOINT_IDS = [SL,EL,PL,KL,SR,PR,KR];
+
+function buildStage(d){
+  SVG.innerHTML='';
+  const isSide = d.view === 'side';
+  const dxs = d.seq.map(f=>f.dx||0);
+  const lo = Math.min(0,...dxs), hi = Math.max(0,...dxs);
+  // fixed viewBox height keeps the figure a consistent size across drills
+  SVG.setAttribute('viewBox', (lo-22)+' -46 '+(244+hi-lo)+' 272');
+
+  const p = mk('g'); SVG.appendChild(p);
+  p.appendChild(mk('line',{x1:lo-30,y1:200,x2:230+hi,y2:200,class:'floor'}));
+  if(d.props==='line') p.appendChild(mk('line',{x1:100,y1:200,x2:100,y2:92,class:'mark'}));
+  if(d.props==='wall'){
+    p.appendChild(mk('rect',{x:198,y:-30,width:20,height:230,class:'prop'}));
+    const t=mk('text',{x:192,y:-38,class:'plbl','text-anchor':'end'});t.textContent='WALL';p.appendChild(t);
+  }
+  if(d.props==='bench'){
+    p.appendChild(mk('rect',{x:150,y:126,width:120,height:15,class:'prop'}));
+    p.appendChild(mk('line',{x1:158,y1:141,x2:158,y2:200,class:'floor'}));
+    p.appendChild(mk('line',{x1:260,y1:141,x2:260,y2:200,class:'floor'}));
+  }
+  if(d.props==='hold'){
+    p.appendChild(mk('line',{x1:130,y1:166,x2:174,y2:166,class:'prop'}));
+    p.appendChild(mk('line',{x1:130,y1:196,x2:174,y2:196,class:'prop'}));
+    const t=mk('text',{x:180,y:188,class:'plbl'});t.textContent='HELD';p.appendChild(t);
+  }
+  if(d.props==='zone'){
+    p.appendChild(mk('rect',{x:96,y:140,width:150,height:60,class:'zone'}));
+    const t=mk('text',{x:100,y:132,class:'plbl'});t.textContent='STOP ZONE';p.appendChild(t);
+  }
+  if(d.props==='partner'){
+    p.appendChild(mk('circle',{cx:176,cy:44,r:9,class:'jt'}));
+    p.appendChild(mk('path',{d:'M176 53 V112 M176 66 L162 56 M176 66 L190 60 M176 112 L166 156 L166 200 M176 112 L186 156 L186 200',class:'limb far'}));
+  }
+
+  G = mk('g'); SVG.appendChild(G);
+  const add=(t,a)=>{const e=mk(t,a);G.appendChild(e);return e;};
+  E.legR  = add('path',{class:'limb'+(isSide?' far':'')});
+  E.armR  = add('path',{class:'limb'+(isSide?' far':'')});
+  E.torso = add('polygon',{class:'torso'});
+  E.neck  = add('path',{class:'limb'});
+  E.legL  = add('path',{class:'limb'});
+  E.armL  = add('path',{class:'limb'});
+  JTS = JOINT_IDS.map(()=>add('circle',{r:4.4,class:'jt'}));
+  E.head  = add('ellipse',{rx:13,ry:15,class:'hd'});
+  BALL = (d.ballFollow || d.ball) ? add('circle',{r:12,class:'ball'}) : null;
+  E.rope = (d.props==='rope') ? add('path',{class:'rope'}) : null;
+  cur = d;
+}
+
+function draw(f){
+  const P = f.pts;
+  E.torso.setAttribute('points',[SL,SR,PR,PL].map(i=>P[i][0].toFixed(1)+','+P[i][1].toFixed(1)).join(' '));
+  E.neck.setAttribute('d', path(P,[NECK,SL]));
+  E.armL.setAttribute('d', path(P,[SL,EL,HL]));
+  E.armR.setAttribute('d', path(P,[SR,ER,HR]));
+  E.legL.setAttribute('d', path(P,[PL,KL,AL,TL]));
+  E.legR.setAttribute('d', path(P,[PR,KR,AR,TR]));
+  E.head.setAttribute('cx',P[HEAD][0].toFixed(1));
+  E.head.setAttribute('cy',P[HEAD][1].toFixed(1));
+  JTS.forEach((c,i)=>{const j=JOINT_IDS[i];c.setAttribute('cx',P[j][0].toFixed(1));c.setAttribute('cy',P[j][1].toFixed(1));});
+  const piv = cur.pivot || [100,200];
+  G.setAttribute('transform','translate('+f.dx.toFixed(1)+' '+f.dy.toFixed(1)+') rotate('+f.rot.toFixed(2)+' '+piv[0]+' '+piv[1]+')');
+  G.setAttribute('opacity', f.op.toFixed(2));
+  if(E.rope){
+    const a=P[HL], b=P[HR], cy = lerp(216,-42,f.arc);
+    E.rope.setAttribute('d','M '+a[0].toFixed(1)+' '+a[1].toFixed(1)+' Q '+((a[0]+b[0])/2).toFixed(1)+' '+cy.toFixed(1)+' '+b[0].toFixed(1)+' '+b[1].toFixed(1));
+  }
+  if(BALL && cur.ballFollow){
+    const j = {hL:HL,hR:HR}[cur.ballFollow];
+    BALL.setAttribute('cx',(P[j][0]+f.dx).toFixed(1));
+    BALL.setAttribute('cy',(P[j][1]+f.dy).toFixed(1));
+    BALL.setAttribute('opacity', f.op.toFixed(2));
+  }
+}
+
+function ballTrack(track, ms){
+  const total = track.reduce((a,s)=>a+s[2],0);
+  let u = ms % total, i=0;
+  while(u >= track[i][2]){ u -= track[i][2]; i++; if(i>=track.length){i=0;break;} }
+  const A=track[i], B=track[(i+1)%track.length], k=A[2]?u/A[2]:0;
+  return [lerp(A[0],B[0],k), lerp(A[1],B[1],k)];
+}
+
+function loop(ts){
+  if(!t0) t0 = ts;
+  const f = sample(cur.seq, ts - t0);
+  draw(f);
+  if(BALL && cur.ball){
+    const b = ballTrack(cur.ball.track, ts - t0);
+    BALL.setAttribute('cx',b[0].toFixed(1)); BALL.setAttribute('cy',b[1].toFixed(1));
+  }
+  raf = requestAnimationFrame(loop);
+}
+function play(d){ cancelAnimationFrame(raf); buildStage(d); t0=0; raf=requestAnimationFrame(loop); }
+
+/* ---------------- app state ---------------- */
+const S = { i:0, sets: DRILLS.map(()=>0) };
+const $ = id => document.getElementById(id);
+const isDone = i => S.sets[i] >= DRILLS[i].dots;
+const nDone  = () => S.sets.reduce((a,_,i)=>a+(isDone(i)?1:0),0);
+
+function renderSegs(){
+  const s = $('segs'); s.innerHTML='';
+  DRILLS.forEach((_,i)=>{
+    const e = document.createElement('div');
+    e.className = 'seg' + (isDone(i)?' done':'') + (i===S.i?' cur':'');
+    s.appendChild(e);
+  });
+  $('ptl').textContent = nDone()+' of '+DRILLS.length+' done';
+  $('ptr').textContent = 'Drill '+(S.i+1);
+}
+
+function render(){
+  const d = DRILLS[S.i];
+  $('block').textContent = d.block;
+  $('count').textContent = (S.i+1)+' / '+DRILLS.length;
+  $('name').textContent = d.name;
+  $('plain').textContent = d.plain;
+  $('big').innerHTML = d.big;
+  $('sub').innerHTML = d.sub;
+  $('steps').innerHTML = d.steps.map(s=>'<li>'+s+'</li>').join('');
+  $('checks').innerHTML = d.checks.map(s=>'<li>'+s+'</li>').join('');
+  $('fix').textContent = d.fix;
+  $('info').scrollTop = 0;
+
+  const dots = $('dots'); dots.innerHTML='';
+  for(let k=0;k<d.dots;k++){
+    const b = document.createElement('button');
+    b.className = 'dot' + (k < S.sets[S.i] ? ' on' : '');
+    b.textContent = k+1;
+    b.onclick = ()=>{
+      S.sets[S.i] = (k < S.sets[S.i]) ? k : k+1;
+      if(k >= S.sets[S.i]-1 && d.rest) startRest(d.rest);
+      render();
+    };
+    dots.appendChild(b);
+  }
+  const rb = $('restbtn');
+  rb.className = d.rest ? '' : 'hide';
+  rb.textContent = 'REST '+d.rest+'s';
+  rb.onclick = ()=>startRest(d.rest);
+
+  $('done-badge').className = isDone(S.i) ? 'on' : '';
+  $('prev').disabled = S.i===0;
+  $('nextbtn').firstChild.textContent = (S.i===DRILLS.length-1) ? 'Finish ' : 'Next ';
+  renderSegs();
+  play(d);
+}
+
+function go(n){
+  if(n >= DRILLS.length){
+    $('fintxt').textContent = nDone()+' of '+DRILLS.length+
+      ' drills completed. Log your standing broad jump every three weeks. If it is not moving, look at sleep and food before you change the program.';
+    $('finish').classList.add('on'); return;
+  }
+  S.i = Math.max(0, Math.min(DRILLS.length-1, n));
+  render();
+}
+
+/* ---------------- rest timer ---------------- */
+let rt=0;
+function startRest(sec){
+  if(!sec) return;
+  let left = sec;
+  $('restnum').textContent = left;
+  $('rest').classList.add('on');
+  clearInterval(rt);
+  rt = setInterval(()=>{
+    left--;
+    $('restnum').textContent = Math.max(0,left);
+    if(left<=0){ clearInterval(rt); $('rest').classList.remove('on'); beep(); }
+  },1000);
+}
+$('restskip').onclick = ()=>{ clearInterval(rt); $('rest').classList.remove('on'); };
+
+let actx=null;
+function beep(){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.connect(g); g.connect(actx.destination); o.frequency.value=760; o.type='square';
+    g.gain.setValueAtTime(.18,actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+.35);
+    o.start(); o.stop(actx.currentTime+.36);
+  }catch(e){}
+}
+
+/* ---------------- keep the screen awake ---------------- */
+let wl=null;
+async function wake(){
+  try{ if('wakeLock' in navigator) wl = await navigator.wakeLock.request('screen'); }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') wake(); });
+
+/* ---------------- controls ---------------- */
+$('prev').onclick = ()=>go(S.i-1);
+$('nextbtn').onclick = ()=>go(S.i+1);
+$('replay').onclick = ()=>{ t0=0; };
+const FIRST_DRILL = DRILLS.findIndex(d=>d.block!=='Warm up');
+$('go').onclick = ()=>{ $('start').classList.remove('on'); wake(); beepInit(); go(0); };
+$('skipprep').onclick = ()=>{ $('start').classList.remove('on'); wake(); beepInit(); go(FIRST_DRILL); };
+$('again').onclick = ()=>{ S.sets = DRILLS.map(()=>0); $('finish').classList.remove('on'); go(0); };
+function beepInit(){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+
+// swipe between drills
+let sx=0, sy=0;
+$('main').addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+$('main').addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)>70 && Math.abs(dx)>Math.abs(dy)*1.6) go(S.i + (dx<0?1:-1));
+},{passive:true});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight') go(S.i+1);
+  if(e.key==='ArrowLeft')  go(S.i-1);
+});
+
+$('introtxt').textContent = DRILLS.length+' movements, about an hour. The first '+
+  DRILLS.filter(d=>d.block==='Warm up').length+' are the warm up. Every rep after that is maximum effort or it does not count.';
+SVG = $('svg');
+render();
+</script>
+</html>
